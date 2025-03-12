@@ -6,7 +6,7 @@ If you find LayeredDepth useful for your work, please consider citing our academ
 
 <h3 align="center">
     <a href="https://arxiv.org/abs/2409.05688">
-        Seeing and Seeing Through the Glass: Real and Synthetic Data for Multi-Layer Depth Estimation
+        Seeing and Seeing Through the Glass: <br> Real and Synthetic Data for Multi-Layer Depth Estimation
     </a>
 </h3>
 <p align="center">
