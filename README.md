@@ -31,12 +31,11 @@ conda activate layereddepth
 <img src="imgs/bench_gallery.jpg" width='1000'>
 
 ### Download
-Download the validation set (images + ground-truth) and test set (images) [here](https://drive.google.com/file/d/1EEFp7AE8ZX75ADztP74Mx7VZ6MOymneN/view?usp=sharing).
+Download the validation set (images + ground-truth) and test set (images) [here](https://drive.google.com/drive/folders/1Vw9BSeXoF2SRiNO199ff-Fa6yAZRwdFM?usp=sharing).
 
 ### Evaluation on Validation Set
-Unzip the validation set to `data/`. 
-To evaluate your depth predictions on the first layer subset of LayeredDepth:
-For each image in LayeredDepth `i.png` ($i=0,...1499$), save your depth estimation for layer $j$ in 16-bit png image as `i_j.png` to directory `estimations`.
+Unzip the validation set into the data/ directory.
+For each image `i.png` in LayeredDepth (where $i = 0, \dots, 1499$), save your depth estimation for layer $j$ as a 16-bit PNG file named `i_j.png` in the estimations directory.
 
 Then run
 ```
@@ -47,7 +46,7 @@ python3 evaluate_layer1.py # for first layer relative depth tuples
 ### Evaluation on Test Set
 To evaluate your model on the test set and compare your results with the baseline, you need to submit your flow predictions to the [evaluation server](https://layereddepth.cs.princeton.edu).
 
-Submit your predictions to the evaluation server using the command below. Your submission should be in the same format of the depth estimation mentioned above. Make sure to replace placeholders with your actual email, submission path, and method name:
+Submit your predictions to the evaluation server using the command below. Ensure your submission follows the same depth estimation format described above. Replace the placeholders with your actual email, submission path, and method name:
 ```
 python3 upload_submission.py --email your_email --path path_to_your_submission --method_name your_method_name --benchmark multi_layer
 python3 upload_submission.py --email your_email --path path_to_your_submission --method_name your_method_name --benchmark first_layer
@@ -59,7 +58,6 @@ To make your submission public, run the command below. Please replace the placeh
 ```
 python3 modify_submission.py --id submission_id --email your_email --anonymous False --method_name your_method_name --publication "your publication name" --url_publication "https://your_publication" --url_code "https://your_code"
 ```
-
 
 ## Synthetic Data Generator
 Coming Soon!
