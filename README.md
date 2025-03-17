@@ -5,7 +5,7 @@ We introduce **LayeredDepth**, a real and a synthetic dataset tailored to the mu
 If you find LayeredDepth useful for your work, please consider citing our academic paper:
 
 <h3 align="center">
-    <a href="https://arxiv.org/abs/2409.05688">
+    <a href="https://arxiv.org/abs/2503.11633">
         Seeing and Seeing Through the Glass: <br> Real and Synthetic Data for Multi-Layer Depth Estimation
     </a>
 </h3>
@@ -18,7 +18,12 @@ If you find LayeredDepth useful for your work, please consider citing our academ
 </p>
 
 ```
-Bibtex Placeholder
+@article{wen2025layereddepth,
+      title={Seeing and Seeing Through the Glass: Real and Synthetic Data for Multi-Layer Depth Estimation}, 
+      author={Hongyu Wen and Yiming Zuo and Venkat Subramanian and Patrick Chen and Jia Deng},
+      journal={arXiv preprint arXiv:2503.11633},
+      year={2025},
+}
 ```
 
 ## Installation
@@ -31,11 +36,11 @@ conda activate layereddepth
 <img src="imgs/bench_gallery.jpg" width='1000'>
 
 ### Download
-Download the validation set (images + ground-truth) and test set (images) [here](https://drive.google.com/drive/folders/1Vw9BSeXoF2SRiNO199ff-Fa6yAZRwdFM?usp=sharing).
+The benchmark data is available under CC0 license. Download the validation set (images + ground-truth) and test set (images) [here](https://drive.google.com/drive/folders/1Vw9BSeXoF2SRiNO199ff-Fa6yAZRwdFM?usp=sharing).
 
 ### Evaluation on Validation Set
 Unzip the validation set into the data/ directory.
-For each image `i.png` in LayeredDepth (where $i = 0, \dots, 1499$), save your depth estimation for layer $j$ as a 16-bit PNG file named `i_j.png` in the estimations directory.
+For each image `i.png` in LayeredDepth (where $i = 0, \dots, 1499$), save your depth estimation for layer $j$ as a 16-bit PNG file named `i_j.png` in the estimations directory. For example, the first layer depth estimation for image `0.png` should be named as `0_1.png`.
 
 Then run
 ```
@@ -61,6 +66,3 @@ python3 modify_submission.py --id submission_id --email your_email --anonymous F
 
 ## Synthetic Data Generator
 Coming Soon!
-
-## Acknowledgements
-TBD

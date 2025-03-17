@@ -21,7 +21,7 @@ def verify_depth(depth, single_tuple):
 def process_image(index, method, prediction_path, data_path, test_subset):
     # Load the depth image
     depth_file = os.path.join(prediction_path, index + '.npy')
-    depth_png = os.path.join(prediction_path, index + '_0.png')
+    depth_png = os.path.join(prediction_path, index + '_1.png')
     
     if not os.path.exists(depth_png):
         depth = np.load(depth_file)

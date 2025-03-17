@@ -34,7 +34,7 @@ def process_image(index, method, prediction_path, data_path, test_subset):
     # Load the depth image
     depths = []
     for i in range(8):
-        depth_file = os.path.join(prediction_path, index + f'_{i}.png')
+        depth_file = os.path.join(prediction_path, index + f'_{i+1}.png')
         if not os.path.exists(depth_file):
             return index, None
         depth = cv2.imread(depth_file, cv2.IMREAD_UNCHANGED).astype(np.float32) / 1000
