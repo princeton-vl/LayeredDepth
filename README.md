@@ -11,8 +11,8 @@ If you find LayeredDepth useful for your work, please consider citing our academ
 </h3>
 <p align="center">
     <a href="https://hermera.github.io">Hongyu Wen</a>, 
-    <a href="">Yiming Zuo</a>, 
-    <a href="">Venkat Subramanian</a>, 
+    <a href="https://zuoym15.github.io">Yiming Zuo</a>, 
+    <a href="http://venkatsubra.com/">Venkat Subramanian</a>, 
     <a href="">Patrick Chen</a>, 
     <a href="https://www.cs.princeton.edu/~jiadeng/">Jia Deng</a><br/>
 </p>
