@@ -69,4 +69,4 @@ Our synthetic data generator is based on [Infinigen](https://infinigen.org).
 
 The generated data is available on [huggingface](https://huggingface.co/datasets/princeton-vl/LayeredDepth-Syn) under the BSD 3-Clause license.
 
-To generate data on your own, please follow instructions for Infinigen data generation [here](infinigen/docs/HellowRoom.md).
+To generate data on your own, please follow instructions for Infinigen data generation [here](infinigen/docs/HelloRoom.md).
