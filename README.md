@@ -36,7 +36,7 @@ conda activate layereddepth
 <img src="imgs/bench_gallery.jpg" width='1000'>
 
 ### Download
-The benchmark data is available under CC0 license. Download the validation set (images + ground-truth) and test set (images) [here](https://drive.google.com/drive/folders/1Vw9BSeXoF2SRiNO199ff-Fa6yAZRwdFM?usp=sharing).
+The benchmark data is available under CC0 license. Download the validation set (images + ground-truth) and test set (images) on [huggingface](https://huggingface.co/datasets/princeton-vl/LayeredDepth).
 
 ### Evaluation on Validation Set
 Unzip the validation set into the data/ directory.
@@ -65,4 +65,8 @@ python3 modify_submission.py --id submission_id --email your_email --anonymous F
 ```
 
 ## Synthetic Data Generator
-Coming Soon!
+Our synthetic data generator is based on [Infinigen](https://infinigen.org).
+
+The generated data is available on [huggingface](https://huggingface.co/datasets/princeton-vl/LayeredDepth-Syn) under the BSD 3-Clause license.
+
+To generate data on your own, please follow instructions for Infinigen data generation [here](infinigen/docs/HellowRoom.md).
