@@ -42,7 +42,7 @@ The benchmark data is available under CC0 license. Download the validation set (
 Run
 ```
 python3 evaluate.py --subset layer_all # for multi-layer depth estimation
-python3 evaluate.py --subset layer_1 # for first layer depth estimation
+python3 evaluate.py --subset layer_first # for first layer depth estimation
 ```
 
 ### Evaluation on Test Set
