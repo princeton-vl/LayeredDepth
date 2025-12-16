@@ -1,4 +1,4 @@
-# Seeing and Seeing Through the Glass: Real and Synthetic Data for Multi-Layer Depth Estimation
+# [ICCV 25] Seeing and Seeing Through the Glass: Real and Synthetic Data for Multi-Layer Depth Estimation
 
 We introduce **LayeredDepth**, a real and a synthetic dataset tailored to the multi-layer depth estimation task. The real dataset is for benchmark purposes, containing in-the-wild images with high-quality, human-annotated relative depth ground-truth. Complementary to the real-world benchmark, our synthetic dataset allows us to train good-performing models for multi-layer depth estimation.
 
