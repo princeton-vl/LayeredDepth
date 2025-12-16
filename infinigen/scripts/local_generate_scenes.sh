@@ -1,17 +1,4 @@
 #!/bin/bash
-#
-#SBATCH --job-name=render
-#SBATCH --output=render.txt
-#SBATCH --account=pvl
-#
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=50G
-#SBATCH --gres=gpu:rtx_3090:1
-#SBATCH --time=00-01:00:00
-#
-#SBATCH --chdir=/n/fs/pvl-transobj/layereddepth/infinigen_internal
 
 name=$1
 echo folder: $name

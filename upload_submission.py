@@ -86,12 +86,13 @@ def upload_file(upload_id, file_path, url=f"{website}/upload"):
 
 
 def compress_folder(path):
-    tmp_folder = os.path.join(os.path.dirname(path), 'tmp')
+    tmp_folder = './tmp'
     os.makedirs(tmp_folder, exist_ok=True)
-    os.system(f"tar -cvzf - {path} | split -a 4 -b 512M -d - {tmp_folder}/submission.tar.gz.")
+    os.system(f"tar -chvzf - {path} | split -a 4 -b 512M -d - {tmp_folder}/submission.tar.gz.")
     return tmp_folder
 
 def main(args):
+    assert os.path.exists(args.path), "Submission path does not exist"
     tmp_folder = compress_folder(args.path)
     # tmp_folder = os.path.join(os.path.dirname(args.path), 'tmp')
     upload_id = request_verification(args)

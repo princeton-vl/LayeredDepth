@@ -1,0 +1,668 @@
+From 7343ad30a32be44759a1063f3bb1ad2f7e736484 Mon Sep 17 00:00:00 2001
+From: Hongyu Wen <hermerawen@gmail.com>
+Date: Tue, 16 Dec 2025 12:24:46 -0500
+Subject: [PATCH] multi-layer ground-truth
+
+---
+ intern/cycles/blender/addon/engine.py         |  41 ++++++
+ intern/cycles/blender/addon/properties.py     |  28 ++++
+ intern/cycles/blender/addon/ui.py             |   8 +-
+ intern/cycles/blender/sync.cpp                |  36 +++++
+ intern/cycles/integrator/pass_accessor.cpp    |   3 +
+ intern/cycles/kernel/data_template.h          |  38 +++++
+ intern/cycles/kernel/film/multilayer_passes.h |  91 ++++++++++++
+ .../cycles/kernel/integrator/shade_surface.h  |   2 +
+ intern/cycles/kernel/types.h                  |  36 +++++
+ intern/cycles/scene/film.cpp                  | 137 ++++++++++++++++++
+ intern/cycles/scene/pass.cpp                  |  83 +++++++++++
+ 11 files changed, 502 insertions(+), 1 deletion(-)
+ create mode 100644 intern/cycles/kernel/film/multilayer_passes.h
+
+diff --git a/intern/cycles/blender/addon/engine.py b/intern/cycles/blender/addon/engine.py
+index b12216a..f264abc 100644
+--- a/intern/cycles/blender/addon/engine.py
++++ b/intern/cycles/blender/addon/engine.py
+@@ -241,6 +241,47 @@ def list_render_passes(scene, srl):
+         yield ("Denoising Albedo", "RGB", 'COLOR')
+         yield ("Denoising Depth", "Z", 'VALUE')
+ 
++    # Multi Layer passes.
++    if crl.use_pass_layered_depth:
++        yield ("Layered Depth 0", "Z", 'VALUE')
++        yield ("Layered Depth 1", "Z", 'VALUE')
++        yield ("Layered Depth 2", "Z", 'VALUE')
++        yield ("Layered Depth 3", "Z", 'VALUE')
++        yield ("Layered Depth 4", "Z", 'VALUE')
++        yield ("Layered Depth 5", "Z", 'VALUE')
++        yield ("Layered Depth 6", "Z", 'VALUE')
++        yield ("Layered Depth 7", "Z", 'VALUE')
++
++    if crl.use_pass_layered_object_id:
++        yield ("Layered Object ID 0", "X", 'VALUE')
++        yield ("Layered Object ID 1", "X", 'VALUE')
++        yield ("Layered Object ID 2", "X", 'VALUE')
++        yield ("Layered Object ID 3", "X", 'VALUE')
++        yield ("Layered Object ID 4", "X", 'VALUE')
++        yield ("Layered Object ID 5", "X", 'VALUE')
++        yield ("Layered Object ID 6", "X", 'VALUE')
++        yield ("Layered Object ID 7", "X", 'VALUE')
++
++    if crl.use_pass_layered_material_id:
++        yield ("Layered Material ID 0", "X", 'VALUE')
++        yield ("Layered Material ID 1", "X", 'VALUE')
++        yield ("Layered Material ID 2", "X", 'VALUE')
++        yield ("Layered Material ID 3", "X", 'VALUE')
++        yield ("Layered Material ID 4", "X", 'VALUE')
++        yield ("Layered Material ID 5", "X", 'VALUE')
++        yield ("Layered Material ID 6", "X", 'VALUE')
++        yield ("Layered Material ID 7", "X", 'VALUE')
++
++    if crl.use_pass_layered_normal:
++        yield ("Layered Normal 0", "XYZ", 'VECTOR')
++        yield ("Layered Normal 1", "XYZ", 'VECTOR')
++        yield ("Layered Normal 2", "XYZ", 'VECTOR')
++        yield ("Layered Normal 3", "XYZ", 'VECTOR')
++        yield ("Layered Normal 4", "XYZ", 'VECTOR')
++        yield ("Layered Normal 5", "XYZ", 'VECTOR')
++        yield ("Layered Normal 6", "XYZ", 'VECTOR')
++        yield ("Layered Normal 7", "XYZ", 'VECTOR')
++
+     # Custom AOV passes.
+     for aov in srl.aovs:
+         if not aov.is_valid:
+diff --git a/intern/cycles/blender/addon/properties.py b/intern/cycles/blender/addon/properties.py
+index 885d8b3..a8f6240 100644
+--- a/intern/cycles/blender/addon/properties.py
++++ b/intern/cycles/blender/addon/properties.py
+@@ -1477,6 +1477,34 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
+         update=update_render_passes,
+     )
+ 
++    use_pass_layered_depth: BoolProperty(
++        name="Layered Depth",
++        description="Deliver depth data for multiple depth layers",
++        default=False,
++        update=update_render_passes,
++    )
++
++    use_pass_layered_object_id: BoolProperty(
++        name="Layered Object ID",
++        description="Deliver object_id data for multiple depth layers",
++        default=False,
++        update=update_render_passes,
++    )
++
++    use_pass_layered_material_id: BoolProperty(
++        name="Layered Material ID",
++        description="Deliver material_id data for multiple depth layers",
++        default=False,
++        update=update_render_passes,
++    )
++
++    use_pass_layered_normal: BoolProperty(
++        name="Layered Normal",
++        description="Deliver normal data for multiple depth layers",
++        default=False,
++        update=update_render_passes,
++    )
++
+     @classmethod
+     def register(cls):
+         bpy.types.ViewLayer.cycles = PointerProperty(
+diff --git a/intern/cycles/blender/addon/ui.py b/intern/cycles/blender/addon/ui.py
+index 9043384..37c8bc3 100644
+--- a/intern/cycles/blender/addon/ui.py
++++ b/intern/cycles/blender/addon/ui.py
+@@ -998,12 +998,18 @@ class CYCLES_RENDER_PT_passes_data(CyclesButtonsPanel, Panel):
+         sub.prop(view_layer, "use_pass_vector")
+         col.prop(view_layer, "use_pass_uv")
+ 
+-        col.prop(cycles_view_layer, "denoising_store_passes", text="Denoising Data")
++        col.prop(cycles_view_layer, "denoising_store_passes", text="Denoising Data test")
+ 
+         col = layout.column(heading="Indexes", align=True)
+         col.prop(view_layer, "use_pass_object_index")
+         col.prop(view_layer, "use_pass_material_index")
+ 
++        col = layout.column(heading="Multi Layer", align=True)
++        col.prop(cycles_view_layer, "use_pass_layered_depth", text="Layered Depth")
++        col.prop(cycles_view_layer, "use_pass_layered_normal", text="Layered Normal")
++        col.prop(cycles_view_layer, "use_pass_layered_object_id", text="Layered Object ID")
++        col.prop(cycles_view_layer, "use_pass_layered_material_id", text="Layered Material ID")
++
+         col = layout.column(heading="Debug", align=True)
+         col.prop(cycles_view_layer, "pass_debug_sample_count", text="Sample Count")
+ 
+diff --git a/intern/cycles/blender/sync.cpp b/intern/cycles/blender/sync.cpp
+index b14455a..3b98f2b 100644
+--- a/intern/cycles/blender/sync.cpp
++++ b/intern/cycles/blender/sync.cpp
+@@ -696,6 +696,42 @@ static bool get_known_pass_type(BL::RenderPass &b_pass, PassType &type, PassMode
+   MAP_PASS("Guiding Probability", PASS_GUIDING_PROBABILITY, false);
+   MAP_PASS("Guiding Average Roughness", PASS_GUIDING_AVG_ROUGHNESS, false);
+ 
++  MAP_PASS("Layered Object ID 0", PASS_LAYERED_OBJECT_ID_0, false);
++  MAP_PASS("Layered Object ID 1", PASS_LAYERED_OBJECT_ID_1, false);
++  MAP_PASS("Layered Object ID 2", PASS_LAYERED_OBJECT_ID_2, false);
++  MAP_PASS("Layered Object ID 3", PASS_LAYERED_OBJECT_ID_3, false);
++  MAP_PASS("Layered Object ID 4", PASS_LAYERED_OBJECT_ID_4, false);
++  MAP_PASS("Layered Object ID 5", PASS_LAYERED_OBJECT_ID_5, false);
++  MAP_PASS("Layered Object ID 6", PASS_LAYERED_OBJECT_ID_6, false);
++  MAP_PASS("Layered Object ID 7", PASS_LAYERED_OBJECT_ID_7, false);
++
++  MAP_PASS("Layered Material ID 0", PASS_LAYERED_MATERIAL_ID_0, false);
++  MAP_PASS("Layered Material ID 1", PASS_LAYERED_MATERIAL_ID_1, false);
++  MAP_PASS("Layered Material ID 2", PASS_LAYERED_MATERIAL_ID_2, false);
++  MAP_PASS("Layered Material ID 3", PASS_LAYERED_MATERIAL_ID_3, false);
++  MAP_PASS("Layered Material ID 4", PASS_LAYERED_MATERIAL_ID_4, false);
++  MAP_PASS("Layered Material ID 5", PASS_LAYERED_MATERIAL_ID_5, false);
++  MAP_PASS("Layered Material ID 6", PASS_LAYERED_MATERIAL_ID_6, false);
++  MAP_PASS("Layered Material ID 7", PASS_LAYERED_MATERIAL_ID_7, false);
++
++  MAP_PASS("Layered Depth 0", PASS_LAYERED_DEPTH_0, false);
++  MAP_PASS("Layered Depth 1", PASS_LAYERED_DEPTH_1, false);
++  MAP_PASS("Layered Depth 2", PASS_LAYERED_DEPTH_2, false);
++  MAP_PASS("Layered Depth 3", PASS_LAYERED_DEPTH_3, false);
++  MAP_PASS("Layered Depth 4", PASS_LAYERED_DEPTH_4, false);
++  MAP_PASS("Layered Depth 5", PASS_LAYERED_DEPTH_5, false);
++  MAP_PASS("Layered Depth 6", PASS_LAYERED_DEPTH_6, false);
++  MAP_PASS("Layered Depth 7", PASS_LAYERED_DEPTH_7, false);
++
++  MAP_PASS("Layered Normal 0", PASS_LAYERED_NORMAL_0, false);
++  MAP_PASS("Layered Normal 1", PASS_LAYERED_NORMAL_1, false);
++  MAP_PASS("Layered Normal 2", PASS_LAYERED_NORMAL_2, false);
++  MAP_PASS("Layered Normal 3", PASS_LAYERED_NORMAL_3, false);
++  MAP_PASS("Layered Normal 4", PASS_LAYERED_NORMAL_4, false);
++  MAP_PASS("Layered Normal 5", PASS_LAYERED_NORMAL_5, false);
++  MAP_PASS("Layered Normal 6", PASS_LAYERED_NORMAL_6, false);
++  MAP_PASS("Layered Normal 7", PASS_LAYERED_NORMAL_7, false);
++
+   if (string_startswith(name, cryptomatte_prefix)) {
+     type = PASS_CRYPTOMATTE;
+     mode = PassMode::DENOISED;
+diff --git a/intern/cycles/integrator/pass_accessor.cpp b/intern/cycles/integrator/pass_accessor.cpp
+index ba41d10..c454cbe 100644
+--- a/intern/cycles/integrator/pass_accessor.cpp
++++ b/intern/cycles/integrator/pass_accessor.cpp
+@@ -145,6 +145,9 @@ bool PassAccessor::get_render_tile_pixels(const RenderBuffers *render_buffers,
+     else if (type == PASS_DEPTH) {
+       get_pass_depth(render_buffers, buffer_params, destination);
+     }
++    else if (type >= PASS_LAYERED_DEPTH_0 && type <= PASS_LAYERED_DEPTH_7) {
++      get_pass_depth(render_buffers, buffer_params, destination);
++    }
+     else if (type == PASS_MIST) {
+       get_pass_mist(render_buffers, buffer_params, destination);
+     }
+diff --git a/intern/cycles/kernel/data_template.h b/intern/cycles/kernel/data_template.h
+index 358e419..cee26cc 100644
+--- a/intern/cycles/kernel/data_template.h
++++ b/intern/cycles/kernel/data_template.h
+@@ -140,6 +140,44 @@ KERNEL_STRUCT_MEMBER(film, int, use_approximate_shadow_catcher)
+ KERNEL_STRUCT_MEMBER(film, int, pass_guiding_color)
+ KERNEL_STRUCT_MEMBER(film, int, pass_guiding_probability)
+ KERNEL_STRUCT_MEMBER(film, int, pass_guiding_avg_roughness)
++
++/* Multi Layer Data */
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_0)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_1)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_2)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_3)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_4)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_5)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_6)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_depth_7)
++
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_0)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_1)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_2)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_3)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_4)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_5)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_6)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_normal_7)
++
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_0)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_1)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_2)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_3)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_4)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_5)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_6)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_object_id_7)
++
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_0)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_1)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_2)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_3)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_4)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_5)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_6)
++KERNEL_STRUCT_MEMBER(film, int, pass_layered_material_id_7)
++
+ KERNEL_STRUCT_END(KernelFilm)
+ 
+ /* Integrator. */
+diff --git a/intern/cycles/kernel/film/multilayer_passes.h b/intern/cycles/kernel/film/multilayer_passes.h
+new file mode 100644
+index 0000000..fc90767
+--- /dev/null
++++ b/intern/cycles/kernel/film/multilayer_passes.h
+@@ -0,0 +1,91 @@
++#pragma once
++#include "kernel/geom/geom.h"
++#include "kernel/film/write.h"
++
++CCL_NAMESPACE_BEGIN
++
++ccl_device_inline void film_write_multilayer_passes(KernelGlobals kg,
++    IntegratorState state,
++    ccl_private const ShaderData *sd,
++    ccl_global float *ccl_restrict render_buffer)
++{
++    const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
++    /* Skip implicitly transparent surfaces. */
++    if (sd->flag & SD_HAS_ONLY_VOLUME) {
++        return;
++    }
++
++    /* Don't write denoising passes for paths that were split off for shadow catchers
++    * to avoid double-counting. */
++    if (path_flag & PATH_RAY_SHADOW_CATCHER_PASS) {
++        return;
++    }
++
++    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
++
++      if (kernel_data.film.pass_layered_object_id_0 != PASS_UNUSED) {
++        const float id = object_pass_id(kg, sd->object);
++        const int bounce = (int)INTEGRATOR_STATE(state, path, bounce);
++        switch (bounce) {
++          case 0: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_0, id); break;
++          case 1: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_1, id); break;
++          case 2: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_2, id); break;
++          case 3: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_3, id); break;
++          case 4: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_4, id); break;
++          case 5: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_5, id); break;
++          case 6: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_6, id); break;
++          case 7: film_write_pass_float(buffer + kernel_data.film.pass_layered_object_id_7, id); break;
++          default: break; /* Ignore any additional bounces. */
++        }
++      }
++
++      if (kernel_data.film.pass_layered_material_id_0 != PASS_UNUSED) {
++        const float id = shader_pass_id(kg, sd);
++        const int bounce = (int)INTEGRATOR_STATE(state, path, bounce);
++        switch (bounce) {
++          case 0: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_0, id); break;
++          case 1: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_1, id); break;
++          case 2: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_2, id); break;
++          case 3: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_3, id); break;
++          case 4: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_4, id); break;
++          case 5: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_5, id); break;
++          case 6: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_6, id); break;
++          case 7: film_write_pass_float(buffer + kernel_data.film.pass_layered_material_id_7, id); break;
++          default: break; /* Ignore any additional bounces. */
++        }
++      }
++  
++      if (kernel_data.film.pass_layered_depth_0 != PASS_UNUSED) {
++        const float depth = camera_z_depth(kg, sd->P);
++        const int bounce = (int)INTEGRATOR_STATE(state, path, bounce);
++        switch (bounce) {
++          case 0: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_0, depth); break;
++          case 1: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_1, depth); break;
++          case 2: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_2, depth); break;
++          case 3: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_3, depth); break;
++          case 4: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_4, depth); break;
++          case 5: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_5, depth); break;
++          case 6: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_6, depth); break;
++          case 7: film_write_pass_float(buffer + kernel_data.film.pass_layered_depth_7, depth); break;
++          default: break; /* Ignore any additional bounces. */
++        }
++      }
++
++    if (kernel_data.film.pass_layered_normal_0 != PASS_UNUSED) {
++        const int bounce = (int)INTEGRATOR_STATE(state, path, bounce);
++        const float3 denoising_normal = surface_shader_average_normal(kg, sd);
++        switch (bounce) {
++            case 0: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_0, denoising_normal); break;
++            case 1: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_1, denoising_normal); break;
++            case 2: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_2, denoising_normal); break;
++            case 3: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_3, denoising_normal); break;
++            case 4: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_4, denoising_normal); break;
++            case 5: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_5, denoising_normal); break;
++            case 6: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_6, denoising_normal); break;
++            case 7: film_write_pass_float3(buffer + kernel_data.film.pass_layered_normal_7, denoising_normal); break;
++            default: break; /* Ignore any additional bounces. */
++        }
++    }
++}
++
++CCL_NAMESPACE_END
+diff --git a/intern/cycles/kernel/integrator/shade_surface.h b/intern/cycles/kernel/integrator/shade_surface.h
+index e1b3998..26fc57a 100644
+--- a/intern/cycles/kernel/integrator/shade_surface.h
++++ b/intern/cycles/kernel/integrator/shade_surface.h
+@@ -10,6 +10,7 @@
+ #include "kernel/film/data_passes.h"
+ #include "kernel/film/denoising_passes.h"
+ #include "kernel/film/light_passes.h"
++#include "kernel/film/multilayer_passes.h"
+ 
+ #include "kernel/light/sample.h"
+ 
+@@ -759,6 +760,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
+ #ifdef __PASSES__
+       PROFILING_EVENT(PROFILING_SHADE_SURFACE_PASSES);
+       film_write_data_passes(kg, state, &sd, render_buffer);
++      film_write_multilayer_passes(kg, state, &sd, render_buffer);
+ #endif
+ 
+ #ifdef __DENOISING_FEATURES__
+diff --git a/intern/cycles/kernel/types.h b/intern/cycles/kernel/types.h
+index 7e3ffb0..7ef3d2a 100644
+--- a/intern/cycles/kernel/types.h
++++ b/intern/cycles/kernel/types.h
+@@ -581,6 +581,42 @@ typedef enum PassType {
+   PASS_BAKE_DIFFERENTIAL,
+   PASS_CATEGORY_BAKE_END = 95,
+ 
++  PASS_LAYERED_DEPTH_0,
++  PASS_LAYERED_DEPTH_1,
++  PASS_LAYERED_DEPTH_2,
++  PASS_LAYERED_DEPTH_3,
++  PASS_LAYERED_DEPTH_4,
++  PASS_LAYERED_DEPTH_5,
++  PASS_LAYERED_DEPTH_6,
++  PASS_LAYERED_DEPTH_7,
++
++  PASS_LAYERED_NORMAL_0,
++  PASS_LAYERED_NORMAL_1,
++  PASS_LAYERED_NORMAL_2,
++  PASS_LAYERED_NORMAL_3,
++  PASS_LAYERED_NORMAL_4,
++  PASS_LAYERED_NORMAL_5,
++  PASS_LAYERED_NORMAL_6,
++  PASS_LAYERED_NORMAL_7,
++
++  PASS_LAYERED_OBJECT_ID_0,
++  PASS_LAYERED_OBJECT_ID_1,
++  PASS_LAYERED_OBJECT_ID_2,
++  PASS_LAYERED_OBJECT_ID_3,
++  PASS_LAYERED_OBJECT_ID_4,
++  PASS_LAYERED_OBJECT_ID_5,
++  PASS_LAYERED_OBJECT_ID_6,
++  PASS_LAYERED_OBJECT_ID_7,
++
++  PASS_LAYERED_MATERIAL_ID_0,
++  PASS_LAYERED_MATERIAL_ID_1,
++  PASS_LAYERED_MATERIAL_ID_2,
++  PASS_LAYERED_MATERIAL_ID_3,
++  PASS_LAYERED_MATERIAL_ID_4,
++  PASS_LAYERED_MATERIAL_ID_5,
++  PASS_LAYERED_MATERIAL_ID_6,
++  PASS_LAYERED_MATERIAL_ID_7,
++
+   PASS_NUM,
+ } PassType;
+ 
+diff --git a/intern/cycles/scene/film.cpp b/intern/cycles/scene/film.cpp
+index eb656b0..a1ca67d 100644
+--- a/intern/cycles/scene/film.cpp
++++ b/intern/cycles/scene/film.cpp
+@@ -201,6 +201,42 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
+   kfilm->pass_guiding_probability = PASS_UNUSED;
+   kfilm->pass_guiding_avg_roughness = PASS_UNUSED;
+ 
++  kfilm->pass_layered_depth_0 = PASS_UNUSED;
++  kfilm->pass_layered_depth_1 = PASS_UNUSED;
++  kfilm->pass_layered_depth_2 = PASS_UNUSED;
++  kfilm->pass_layered_depth_3 = PASS_UNUSED;
++  kfilm->pass_layered_depth_4 = PASS_UNUSED;
++  kfilm->pass_layered_depth_5 = PASS_UNUSED;
++  kfilm->pass_layered_depth_6 = PASS_UNUSED;
++  kfilm->pass_layered_depth_7 = PASS_UNUSED;
++
++  kfilm->pass_layered_normal_0 = PASS_UNUSED;
++  kfilm->pass_layered_normal_1 = PASS_UNUSED;
++  kfilm->pass_layered_normal_2 = PASS_UNUSED;
++  kfilm->pass_layered_normal_3 = PASS_UNUSED;
++  kfilm->pass_layered_normal_4 = PASS_UNUSED;
++  kfilm->pass_layered_normal_5 = PASS_UNUSED;
++  kfilm->pass_layered_normal_6 = PASS_UNUSED;
++  kfilm->pass_layered_normal_7 = PASS_UNUSED;
++
++  kfilm->pass_layered_object_id_0 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_1 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_2 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_3 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_4 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_5 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_6 = PASS_UNUSED;
++  kfilm->pass_layered_object_id_7 = PASS_UNUSED;
++
++  kfilm->pass_layered_material_id_0 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_1 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_2 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_3 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_4 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_5 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_6 = PASS_UNUSED;
++  kfilm->pass_layered_material_id_7 = PASS_UNUSED;
++
+   bool have_cryptomatte = false;
+   bool have_aov_color = false;
+   bool have_aov_value = false;
+@@ -389,6 +425,107 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
+       case PASS_GUIDING_AVG_ROUGHNESS:
+         kfilm->pass_guiding_avg_roughness = kfilm->pass_stride;
+         break;
++
++      case PASS_LAYERED_DEPTH_0:
++        kfilm->pass_layered_depth_0 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_1:
++        kfilm->pass_layered_depth_1 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_2:
++        kfilm->pass_layered_depth_2 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_3:
++        kfilm->pass_layered_depth_3 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_4:
++        kfilm->pass_layered_depth_4 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_5:
++        kfilm->pass_layered_depth_5 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_6:
++        kfilm->pass_layered_depth_6 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_DEPTH_7:
++        kfilm->pass_layered_depth_7 = kfilm->pass_stride;
++        break;
++
++      case PASS_LAYERED_NORMAL_0:
++        kfilm->pass_layered_normal_0 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_1:
++        kfilm->pass_layered_normal_1 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_2:
++        kfilm->pass_layered_normal_2 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_3:
++        kfilm->pass_layered_normal_3 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_4:
++        kfilm->pass_layered_normal_4 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_5:
++        kfilm->pass_layered_normal_5 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_6:
++        kfilm->pass_layered_normal_6 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_NORMAL_7:
++        kfilm->pass_layered_normal_7 = kfilm->pass_stride;
++        break;
++
++      case PASS_LAYERED_OBJECT_ID_0:
++        kfilm->pass_layered_object_id_0 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_1:
++        kfilm->pass_layered_object_id_1 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_2:
++        kfilm->pass_layered_object_id_2 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_3:
++        kfilm->pass_layered_object_id_3 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_4:
++        kfilm->pass_layered_object_id_4 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_5:
++        kfilm->pass_layered_object_id_5 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_6:
++        kfilm->pass_layered_object_id_6 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_OBJECT_ID_7:
++        kfilm->pass_layered_object_id_7 = kfilm->pass_stride;
++        break;
++
++      case PASS_LAYERED_MATERIAL_ID_0:
++        kfilm->pass_layered_material_id_0 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_1:
++        kfilm->pass_layered_material_id_1 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_2:
++        kfilm->pass_layered_material_id_2 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_3:
++        kfilm->pass_layered_material_id_3 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_4:
++        kfilm->pass_layered_material_id_4 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_5:
++        kfilm->pass_layered_material_id_5 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_6:
++        kfilm->pass_layered_material_id_6 = kfilm->pass_stride;
++        break;
++      case PASS_LAYERED_MATERIAL_ID_7:
++        kfilm->pass_layered_material_id_7 = kfilm->pass_stride;
++        break;
++        
+       default:
+         assert(false);
+         break;
+diff --git a/intern/cycles/scene/pass.cpp b/intern/cycles/scene/pass.cpp
+index 062d7cb..33e8d9c 100644
+--- a/intern/cycles/scene/pass.cpp
++++ b/intern/cycles/scene/pass.cpp
+@@ -97,6 +97,42 @@ const NodeEnum *Pass::get_type_enum()
+     pass_type_enum.insert("bake_primitive", PASS_BAKE_PRIMITIVE);
+     pass_type_enum.insert("bake_differential", PASS_BAKE_DIFFERENTIAL);
+ 
++    pass_type_enum.insert("layered_depth_0", PASS_LAYERED_DEPTH_0);
++    pass_type_enum.insert("layered_depth_1", PASS_LAYERED_DEPTH_1);
++    pass_type_enum.insert("layered_depth_2", PASS_LAYERED_DEPTH_2);
++    pass_type_enum.insert("layered_depth_3", PASS_LAYERED_DEPTH_3);
++    pass_type_enum.insert("layered_depth_4", PASS_LAYERED_DEPTH_4);
++    pass_type_enum.insert("layered_depth_5", PASS_LAYERED_DEPTH_5);
++    pass_type_enum.insert("layered_depth_6", PASS_LAYERED_DEPTH_6);
++    pass_type_enum.insert("layered_depth_7", PASS_LAYERED_DEPTH_7);
++
++    pass_type_enum.insert("layered_normal_0", PASS_LAYERED_NORMAL_0);
++    pass_type_enum.insert("layered_normal_1", PASS_LAYERED_NORMAL_1);
++    pass_type_enum.insert("layered_normal_2", PASS_LAYERED_NORMAL_2);
++    pass_type_enum.insert("layered_normal_3", PASS_LAYERED_NORMAL_3);
++    pass_type_enum.insert("layered_normal_4", PASS_LAYERED_NORMAL_4);
++    pass_type_enum.insert("layered_normal_5", PASS_LAYERED_NORMAL_5);
++    pass_type_enum.insert("layered_normal_6", PASS_LAYERED_NORMAL_6);
++    pass_type_enum.insert("layered_normal_7", PASS_LAYERED_NORMAL_7);
++
++    pass_type_enum.insert("layered_object_id_0", PASS_LAYERED_OBJECT_ID_0);
++    pass_type_enum.insert("layered_object_id_1", PASS_LAYERED_OBJECT_ID_1);
++    pass_type_enum.insert("layered_object_id_2", PASS_LAYERED_OBJECT_ID_2);
++    pass_type_enum.insert("layered_object_id_3", PASS_LAYERED_OBJECT_ID_3);
++    pass_type_enum.insert("layered_object_id_4", PASS_LAYERED_OBJECT_ID_4);
++    pass_type_enum.insert("layered_object_id_5", PASS_LAYERED_OBJECT_ID_5);
++    pass_type_enum.insert("layered_object_id_6", PASS_LAYERED_OBJECT_ID_6);
++    pass_type_enum.insert("layered_object_id_7", PASS_LAYERED_OBJECT_ID_7);
++
++    pass_type_enum.insert("layered_material_id_0", PASS_LAYERED_MATERIAL_ID_0);
++    pass_type_enum.insert("layered_material_id_1", PASS_LAYERED_MATERIAL_ID_1);
++    pass_type_enum.insert("layered_material_id_2", PASS_LAYERED_MATERIAL_ID_2);
++    pass_type_enum.insert("layered_material_id_3", PASS_LAYERED_MATERIAL_ID_3);
++    pass_type_enum.insert("layered_material_id_4", PASS_LAYERED_MATERIAL_ID_4);
++    pass_type_enum.insert("layered_material_id_5", PASS_LAYERED_MATERIAL_ID_5);
++    pass_type_enum.insert("layered_material_id_6", PASS_LAYERED_MATERIAL_ID_6);
++    pass_type_enum.insert("layered_material_id_7", PASS_LAYERED_MATERIAL_ID_7);
++
+ #ifdef WITH_CYCLES_DEBUG
+     pass_type_enum.insert("guiding_color", PASS_GUIDING_COLOR);
+     pass_type_enum.insert("guiding_probability", PASS_GUIDING_PROBABILITY);
+@@ -350,6 +386,53 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
+     case PASS_GUIDING_AVG_ROUGHNESS:
+       pass_info.num_components = 1;
+       break;
++
++    case PASS_LAYERED_DEPTH_0:
++    case PASS_LAYERED_DEPTH_1:
++    case PASS_LAYERED_DEPTH_2:
++    case PASS_LAYERED_DEPTH_3:
++    case PASS_LAYERED_DEPTH_4:
++    case PASS_LAYERED_DEPTH_5:
++    case PASS_LAYERED_DEPTH_6:
++    case PASS_LAYERED_DEPTH_7:
++      pass_info.num_components = 1;
++      // pass_info.use_filter = false; // Make the edge smoother (?) Is that a good call?
++      break;
++
++    case PASS_LAYERED_NORMAL_0:
++    case PASS_LAYERED_NORMAL_1:
++    case PASS_LAYERED_NORMAL_2:
++    case PASS_LAYERED_NORMAL_3:
++    case PASS_LAYERED_NORMAL_4:
++    case PASS_LAYERED_NORMAL_5:
++    case PASS_LAYERED_NORMAL_6:
++    case PASS_LAYERED_NORMAL_7:
++      pass_info.num_components = 3;
++      break;
++    
++    case PASS_LAYERED_OBJECT_ID_0:
++    case PASS_LAYERED_OBJECT_ID_1:
++    case PASS_LAYERED_OBJECT_ID_2:
++    case PASS_LAYERED_OBJECT_ID_3:
++    case PASS_LAYERED_OBJECT_ID_4:
++    case PASS_LAYERED_OBJECT_ID_5:
++    case PASS_LAYERED_OBJECT_ID_6:
++    case PASS_LAYERED_OBJECT_ID_7:
++      pass_info.num_components = 1;
++      // pass_info.use_filter = false;
++      break;
++
++    case PASS_LAYERED_MATERIAL_ID_0:
++    case PASS_LAYERED_MATERIAL_ID_1:
++    case PASS_LAYERED_MATERIAL_ID_2:
++    case PASS_LAYERED_MATERIAL_ID_3:
++    case PASS_LAYERED_MATERIAL_ID_4:
++    case PASS_LAYERED_MATERIAL_ID_5:
++    case PASS_LAYERED_MATERIAL_ID_6:
++    case PASS_LAYERED_MATERIAL_ID_7:
++      pass_info.num_components = 1;
++      // pass_info.use_filter = false;
++      break;
+   }
+ 
+   return pass_info;
+-- 
+2.47.1
+
