@@ -12,3 +12,8 @@ __pycache__
 
 srun*
 tmp
+
+# Local artifacts created by the resumable benchmark uploader.
+*.layereddepth.zip
+layereddepth-upload-*.json
+*.cookies.txt

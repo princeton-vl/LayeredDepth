@@ -50,11 +50,13 @@ To evaluate your model on the test set and compare your results with the baselin
 
 For each image `i.png` in LayeredDepth (where $i = 0, \dots, 1499$), save your depth estimation for layer $j$ as a 16-bit PNG file named `i_j.png` or numpy file named `i_j.npy` in the estimations directory. For example, the first layer depth estimation for image `0.png` should be named as `0_1.png` or `0_1.npy`. For multi-layer depth estimation, you will need to submit layer 1, 3, 5, 7 depth estimations for each image.
 
-Submit your predictions to the evaluation server using the command below. Ensure your submission follows the same depth estimation format described above. Replace the placeholders with your actual email, submission path, and method name:
-```
+Submit a folder containing your predictions:
+
+```bash
 python3 upload_submission.py --email your_email --path path_to_your_submission --method_name your_method_name --benchmark multi_layer
-python3 upload_submission.py --email your_email --path path_to_your_submission --method_name your_method_name --benchmark first_layer
 ```
+
+Use `--benchmark first_layer` for first-layer evaluation. Enter the verification code sent to your email when prompted.
 
 Upon submission, you will receive a unique submission ID, which serves as the identifier for your submission. Results are typically emailed within 1 hour. Please note that each email user may upload only three submissions every seven days.
 
